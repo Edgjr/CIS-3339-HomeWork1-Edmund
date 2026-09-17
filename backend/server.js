@@ -9,6 +9,7 @@ app.use(express.json());
 
 const DATA_FILE = path.join(__dirname, 'students.json');
 const COURSE_DATA_FILE = path.join(__dirname, 'courses.json');
+const ENROLLMENT_DATA_FILE = path.join(__dirname, 'enrollments.json');
 
 async function loadStudents() {
     try {
@@ -55,6 +56,36 @@ async function saveCourses(courses) {
         );
     } catch (error) {
         console.error('Error writing courses file:', error);
+        throw error;
+    }
+}
+
+async function loadEnrollments() {
+    try {
+        const data = await fs.promises.readFile(
+            ENROLLMENT_DATA_FILE,
+            'utf8'
+        );
+        return JSON.parse(data);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            return [];
+        }
+
+        console.error('Error reading enrollments file:', error);
+        return [];
+    }
+}
+
+async function saveEnrollments(enrollments) {
+    try {
+        await fs.promises.writeFile(
+            ENROLLMENT_DATA_FILE,
+            JSON.stringify(enrollments, null, 2),
+            'utf8'
+        );
+    } catch (error) {
+        console.error('Error writing enrollments file:', error);
         throw error;
     }
 }
@@ -165,6 +196,20 @@ app.post('/find-student', async (req, res) => {
     }
 });
 
+// Endpoint to list all students
+app.get('/students', async (req, res) => {
+    try {
+        const students = await loadStudents();
+
+        res.send(students);
+    } catch (error) {
+        console.error('Error loading students:', error);
+        res.status(500).send({
+            error: 'Internal server error'
+        });
+    }
+});
+
 // Endpoint to save a student
 app.post('/add-student', async (req, res) => {
     try {
@@ -224,6 +269,115 @@ app.post('/delete-student', async (req, res) => {
     } catch (error) {
         console.error('Error deleting student:', error);
         res.status(500).send({ error: 'Internal server error' });
+    }
+});
+
+
+
+// Endpoint to create an enrollment
+app.post('/enrollments', async (req, res) => {
+    try {
+        const { studentId, courseId } = req.body;
+
+        if (!studentId || !courseId) {
+            return res.status(400).send({
+                error: 'Student ID and course ID are required'
+            });
+        }
+
+        const students = await loadStudents();
+        const courses = await loadCourses();
+        const enrollments = await loadEnrollments();
+
+        const studentExists = students.some(
+            (student) => student.id === studentId
+        );
+
+        if (!studentExists) {
+            return res.status(404).send({
+                error: 'Student not found'
+            });
+        }
+
+        const courseExists = courses.some(
+            (course) => course.id === courseId
+        );
+
+        if (!courseExists) {
+            return res.status(404).send({
+                error: 'Course not found'
+            });
+        }
+
+        const duplicateEnrollment = enrollments.find(
+            (enrollment) =>
+                enrollment.studentId === studentId &&
+                enrollment.courseId === courseId
+        );
+
+        if (duplicateEnrollment) {
+            return res.status(409).send({
+                error: 'This student is already enrolled in this course'
+            });
+        }
+
+        const newEnrollment = {
+            studentId,
+            courseId
+        };
+
+        enrollments.push(newEnrollment);
+        await saveEnrollments(enrollments);
+
+        res.status(201).send({
+            message: 'Enrollment created successfully',
+            enrollment: newEnrollment
+        });
+    } catch (error) {
+        console.error('Error creating enrollment:', error);
+        res.status(500).send({
+            error: 'Internal server error'
+        });
+    }
+});
+
+// Endpoint to list students enrolled in a course
+app.get('/enrollments/course/:courseId', async (req, res) => {
+    try {
+        const { courseId } = req.params;
+
+        const courses = await loadCourses();
+        const students = await loadStudents();
+        const enrollments = await loadEnrollments();
+
+        const courseExists = courses.some(
+            (course) => course.id === courseId
+        );
+
+        if (!courseExists) {
+            return res.status(404).send({
+                error: 'Course not found'
+            });
+        }
+
+        const courseEnrollments = enrollments.filter(
+            (enrollment) => enrollment.courseId === courseId
+        );
+
+        const enrolledStudents = courseEnrollments
+            .map((enrollment) =>
+                students.find(
+                    (student) => student.id === enrollment.studentId
+                )
+            )
+            .filter(Boolean);
+
+        res.send(enrolledStudents);
+    } catch (error) {
+        console.error('Error loading course roster:', error);
+        res.status(500).send({
+            error: 'Internal server error'
+        });
     }
 });
 
