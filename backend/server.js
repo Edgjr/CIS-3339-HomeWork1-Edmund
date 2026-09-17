@@ -56,16 +56,34 @@ app.post('/find-student', async (req, res) => {
 app.post('/add-student', async (req, res) => {
     try {
         const { name, id, phone, zip } = req.body;
+
         if (!name || !id || !phone || !zip) {
-            return res.status(400).send({ error: 'All fields (name, id, phone, zip) are required' });
+            return res.status(400).send({
+                error: 'All fields (name, id, phone, zip) are required'
+            });
         }
 
         const students = await loadStudents();
+
+        const duplicateStudent = students.find(
+            (student) => student.id === id
+        );
+
+        if (duplicateStudent) {
+            return res.status(409).send({
+                error: 'A student with this ID already exists'
+            });
+        }
+
         const newStudent = { name, id, phone, zip };
+
         students.push(newStudent);
         await saveStudents(students);
 
-        res.status(201).send({ message: 'Student added successfully', student: newStudent });
+        res.status(201).send({
+            message: 'Student added successfully',
+            student: newStudent
+        });
     } catch (error) {
         console.error('Error adding student:', error);
         res.status(500).send({ error: 'Internal server error' });
