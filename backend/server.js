@@ -8,6 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 const DATA_FILE = path.join(__dirname, 'students.json');
+const COURSE_DATA_FILE = path.join(__dirname, 'courses.json');
 
 async function loadStudents() {
     try {
@@ -30,6 +31,118 @@ async function saveStudents(students) {
         throw error;
     }
 }
+
+async function loadCourses() {
+    try {
+        const data = await fs.promises.readFile(COURSE_DATA_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            return [];
+        }
+
+        console.error('Error reading courses file:', error);
+        return [];
+    }
+}
+
+async function saveCourses(courses) {
+    try {
+        await fs.promises.writeFile(
+            COURSE_DATA_FILE,
+            JSON.stringify(courses, null, 2),
+            'utf8'
+        );
+    } catch (error) {
+        console.error('Error writing courses file:', error);
+        throw error;
+    }
+}
+
+// Endpoint to save a course
+app.post('/add-course', async (req, res) => {
+    try {
+        const { id, name } = req.body;
+
+        if (!id || !name) {
+            return res.status(400).send({
+                error: 'Course ID and course name are required'
+            });
+        }
+
+        const courses = await loadCourses();
+
+        const duplicateCourse = courses.find(
+            (course) => course.id === id
+        );
+
+        if (duplicateCourse) {
+            return res.status(409).send({
+                error: 'A course with this ID already exists'
+            });
+        }
+
+        const newCourse = { id, name };
+
+        courses.push(newCourse);
+        await saveCourses(courses);
+
+        res.status(201).send({
+            message: 'Course added successfully',
+            course: newCourse
+        });
+    } catch (error) {
+        console.error('Error adding course:', error);
+        res.status(500).send({
+            error: 'Internal server error'
+        });
+    }
+});
+
+// Endpoint to list all courses
+app.get('/courses', async (req, res) => {
+    try {
+        const courses = await loadCourses();
+
+        res.send(courses);
+    } catch (error) {
+        console.error('Error loading courses:', error);
+        res.status(500).send({
+            error: 'Internal server error'
+        });
+    }
+});
+
+// Endpoint to delete a course by ID
+app.delete('/courses/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const courses = await loadCourses();
+
+        const index = courses.findIndex((course) => course.id === id);
+
+        if (index === -1) {
+            return res.status(404).send({
+                error: 'Course not found'
+            });
+        }
+
+        const deletedCourse = courses.splice(index, 1)[0];
+
+        await saveCourses(courses);
+
+        res.send({
+            message: 'Course deleted successfully',
+            course: deletedCourse
+        });
+    } catch (error) {
+        console.error('Error deleting course:', error);
+        res.status(500).send({
+            error: 'Internal server error'
+        });
+    }
+});
 
 // Endpoint to search for a student by name
 app.post('/find-student', async (req, res) => {
