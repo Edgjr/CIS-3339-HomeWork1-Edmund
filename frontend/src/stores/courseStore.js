@@ -11,7 +11,7 @@ export const useCourseStore = defineStore('course', () => {
     errorMessage.value = ''
 
     try {
-      const response = await fetch('http://localhost:3000/courses')
+          const response = await fetch('http://localhost:3000/api/courses')
 
       if (!response.ok) {
         errorMessage.value = 'Unable to load courses.'

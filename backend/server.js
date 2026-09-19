@@ -3,9 +3,12 @@ require('dotenv').config();
 const { MongoClient } = require('mongodb');
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 
 const app = express();
+
+const FRONTEND_DIST = path.join(__dirname, '..', 'frontend', 'dist');
 
 const client = new MongoClient(process.env.MONGODB_URI);
 const db = client.db('cis3339_homework1');
@@ -16,6 +19,7 @@ const enrollmentsCollection = db.collection('enrollments');
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(FRONTEND_DIST));
 
 async function loadStudents() {
     return await studentsCollection.find({}).toArray();
@@ -196,7 +200,7 @@ app.post('/add-course', async (req, res) => {
 });
 
 // Endpoint to list all courses
-app.get('/courses', async (req, res) => {
+app.get('/api/courses', async (req, res) => {
     try {
         const courses = await loadCourses();
 
@@ -349,6 +353,10 @@ app.get('/enrollments/course/:courseId', async (req, res) => {
             error: 'Internal server error'
         });
     }
+});
+
+app.get(/.*/, (req, res) => {
+    res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
 });
 
 const PORT = 3000;
