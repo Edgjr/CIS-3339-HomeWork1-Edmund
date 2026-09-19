@@ -79,7 +79,7 @@ app.post('/find-student', async (req, res) => {
 });
 
 // Endpoint to list all students
-app.get('/students', async (req, res) => {
+app.get('/api/students', async (req, res) => {
     try {
         const students = await loadStudents();
 

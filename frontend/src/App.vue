@@ -1,12 +1,7 @@
 <script setup>
+import AppShell from './components/AppShell.vue'
 </script>
 
 <template>
-  <nav>
-    <RouterLink to="/">Students</RouterLink>
-    |
-    <RouterLink to="/courses">Courses</RouterLink>
-  </nav>
-
-  <RouterView />
+  <AppShell />
 </template>

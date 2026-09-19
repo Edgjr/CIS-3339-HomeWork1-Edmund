@@ -96,7 +96,7 @@ export const useStudentStore = defineStore('student', () => {
     studentsError.value = ''
 
     try {
-      const response = await fetch('http://localhost:3000/students')
+      const response = await fetch('http://localhost:3000/api/students')
 
       if (!response.ok) {
         studentsError.value = 'Unable to load students.'
